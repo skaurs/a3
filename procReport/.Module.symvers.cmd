@@ -1,0 +1,1 @@
+cmd_/home/skaur65/Documents/a3/a3/procReport/Module.symvers := sed 's/ko$$/o/' /home/skaur65/Documents/a3/a3/procReport/modules.order | scripts/mod/modpost  -a   -o /home/skaur65/Documents/a3/a3/procReport/Module.symvers -e -i Module.symvers   -T -

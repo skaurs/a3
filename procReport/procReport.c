@@ -5,6 +5,7 @@
 #include<linux/pid.h>
 #include<linux/pid_namespace.h>
 #include<asm/uaccess.h>
+#include<asm/io.h>
 #include<linux/fs.h> 
 #include<linux/cdev.h>
 #include<linux/proc_fs.h>
@@ -40,16 +41,16 @@ int iterateList(data* theData);
 int displayInfo(data* procList);
 int reportOut(struct seq_file* seqFile, void* theVoid);
 int openProc(struct inode* inode, struct file* file);
-static const struct file_operations procops;
+//static const struct file_operations procops;
 void proc_cleanup(void);
 
 
-static const struct file_operations procops = {
-    .open       = openProc, 
-    .read       = seq_read,
-    .llseek     = seq_lseek,
-    .release    = single_release,
-    .owner      = THIS_MODULE
+static const struct proc_ops procops = {
+	.proc_open = openProc, 
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+	//owner: THIS_MODULE
 };
 
 /**
@@ -82,27 +83,30 @@ int proc_init (void) {
 * pre: struct mm_struct*, unsigned long
 * post: unsigned long 
 */
-unsigned long virToPhys(const struct mm_struct *mm, unsigned long virt) 
+unsigned long virt2phys(const struct mm_struct *mm, unsigned long virt) 
 {
 	//store address
-  	unsigned long phys = 0;
+  	unsigned long phys;
 	pgd_t *pgd;
+	p4d_t* p4d;
 	pud_t *pud;
 	pmd_t *pmd;
 	pte_t *pte;
 	struct page* page;
+	
 	pgd = pgd_offset(mm, virt);
-
 	if (pgd_none(*pgd) || pgd_bad(*pgd))
 		return 0;
-
-	pud = pud_offset(pgd, virt);
-
+		
+	p4d = p4d_offset(pgd, virt);
+	if (p4d_none(*p4d) || p4d_bad(*p4d))
+		return 0;
+		
+	pud = pud_offset(p4d, virt);
 	if (pud_none(*pud) || pud_bad(*pud))
 		return 0;
 
 	pmd = pmd_offset(pud, virt);
-
 	if (pmd_none(*pmd) || pmd_bad(*pmd))
 		return 0;
 
@@ -150,7 +154,7 @@ int iterateList(data* theData)
 					tmp = 0;
 					for (vpage = vma -> vm_start; vpage < vma-> vm_end; vpage += PAGE_SIZE)
 					{
-					 	unsigned long phys = virToPhys(task -> mm, vpage);
+					 	unsigned long phys = virt2phys(task -> mm, vpage);
 					
 						if (phys != 0)
 						{
